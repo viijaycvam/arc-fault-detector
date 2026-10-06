@@ -1,9 +1,28 @@
+# Python virtual environment
 venv/
+
+# Python cache
 __pycache__/
 *.pyc
+
+# Raw / processed datasets
 data/raw/*
 !data/raw/.gitkeep
+
 data/processed/*
 !data/processed/.gitkeep
+
+# Generated model directories
 models/
+
+# Generated plots
 plots/
+
+# Compiled executables
+*.exe
+
+# Backup source files
+*_backup.c
+
+# Generated binary test/reference data
+reports/*.bin

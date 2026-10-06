@@ -1,0 +1,34 @@
+====================================================
+FULL OFFICIAL TEST SET - C/PYTHON EQUIVALENCE
+====================================================
+
+Feature      | Max Abs Diff       | Pass Rate (<=1e-2)
+------------------------------------------------------
+crest        |    1.14440918e-005 | 1334 / 1334
+skew         |    2.09808350e-005 | 1334 / 1334
+kurt         |    5.49316406e-004 | 1334 / 1334
+d1_ratio     |    1.90734863e-006 | 1334 / 1334
+d2_ratio     |    5.72204590e-006 | 1334 / 1334
+peak_asym    |    2.60770321e-007 | 1334 / 1334
+energy_asym  |    1.24610960e-006 | 1334 / 1334
+frac_small   |    0.00000000e+000 | 1334 / 1334
+
+====================================================
+FULL TEST FEATURE EQUIVALENCE : 1334 / 1334
+FULL TEST PREDICTION MATCH    : 1334 / 1334
+Prediction mismatches         : 0
+Probability mismatches >1e-4 : 0
+Maximum probability difference: 4.0435901610e-005
+
+C CONFUSION MATRIX
+TN = 850
+FP = 11
+FN = 81
+TP = 392
+
+C ACCURACY           : 93.1034%
+C FALSE-TRIP RATE    : 1.2776%
+C ARC DETECTION      : 82.8753%
+====================================================
+
+PASS: C and Python pipelines are equivalent on all 1334 official test windows.

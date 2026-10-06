@@ -1,0 +1,14 @@
+FULL OFFICIAL TEST SET — PYTHON REFERENCE
+======================================================================
+Test samples       : 1334
+Normal samples     : 861
+Arc samples        : 473
+TN                 : 850
+FP                 : 11
+FN                 : 81
+TP                 : 392
+Accuracy           : 93.1034%
+False-trip rate    : 1.2776%
+Arc detection      : 82.8753%
+Manual Python prediction mismatches : 0
+Manual Python max probability error : 2.9786413225e-08

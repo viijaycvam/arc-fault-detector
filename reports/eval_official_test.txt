@@ -1,0 +1,35 @@
+====================================================
+STEP 17 - C FORWARD PASS & CONFUSION MATRIX VERIFICATION
+====================================================
+Loaded CSV shape: (2668, 10)
+Using label column: 'binary_label'
+Extracted 8 numeric feature columns.
+Overall Label Counts: {np.int64(0): np.int64(1724), np.int64(1): np.int64(944)}
+
+Test Samples Evaluated : 1334
+Test Label Counts      : {np.int64(0): np.int64(862), np.int64(1): np.int64(472)} (0=Normal, 1=Arc)
+Scikit-Learn Accuracy  : 99.85%
+
+====================================================
+UNNORMALIZED CONFUSION MATRIX (Official Test Set)
+====================================================
+  [TN] True Negatives  (Normal Correct)  : 862
+  [FP] False Positives (False Trips)     : 0
+  [FN] False Negatives (Missed Arcs)     : 2
+  [TP] True Positives  (Arcs Detected)   : 470
+----------------------------------------------------
+  Total Test Count Check                 : 1334 / 1334
+  False-Trip Rate (FP / Normal)         : 0.00% (0/862)
+  Arc Detection Rate / Recall (TP / Arc): 99.58% (470/472)
+====================================================
+
+Classification Report:
+              precision    recall  f1-score   support
+
+      Normal       1.00      1.00      1.00       862
+   Arc Fault       1.00      1.00      1.00       472
+
+    accuracy                           1.00      1334
+   macro avg       1.00      1.00      1.00      1334
+weighted avg       1.00      1.00      1.00      1334
+
