@@ -1,0 +1,261 @@
+CYCLE SLICING + 8-FEATURE INTEGRATION TEST
+============================================
+
+Software simulation only.
+No hardware measurement.
+No official dataset samples used.
+
+Sampling rate: 50000 Hz
+Target cycle length: 1000
+
+Feature order:
+  0: crest
+  1: skew
+  2: kurt
+  3: d1_ratio
+  4: d2_ratio
+  5: peak_asym
+  6: energy_asym
+  7: frac_small
+
+Case: clean
+Frequency: 49.500 Hz
+Crossings: 19
+Cycles: 18
+Cycle length: 1000..1000
+Features finite: True
+Mean features:
+  crest: 1.4142136873
+  skew: -0.0000000118
+  kurt: -1.4999999983
+  d1_ratio: 0.0000394222
+  d2_ratio: 0.0000000016
+  peak_asym: 0.0000000027
+  energy_asym: -0.0000000053
+  frac_small: 0.0640000000
+
+Case: clean
+Frequency: 50.000 Hz
+Crossings: 19
+Cycles: 18
+Cycle length: 1000..1000
+Features finite: True
+Mean features:
+  crest: 1.4142077991
+  skew: -0.0000000088
+  kurt: -1.4999999996
+  d1_ratio: 0.0000394225
+  d2_ratio: 0.0000000016
+  peak_asym: -0.0000000026
+  energy_asym: -0.0000000038
+  frac_small: 0.0640000000
+
+Case: clean
+Frequency: 50.500 Hz
+Crossings: 19
+Cycles: 18
+Cycle length: 1000..1000
+Features finite: True
+Mean features:
+  crest: 1.4142127871
+  skew: -0.0000000052
+  kurt: -1.4999999982
+  d1_ratio: 0.0000394228
+  d2_ratio: 0.0000000016
+  peak_asym: 0.0000000180
+  energy_asym: -0.0000000023
+  frac_small: 0.0640000000
+
+Case: 5pct_noise
+Frequency: 49.500 Hz
+Crossings: 19
+Cycles: 18
+Cycle length: 1000..1000
+Features finite: True
+Mean features:
+  crest: 1.5546090749
+  skew: -0.0018627276
+  kurt: -1.4905565495
+  d1_ratio: 0.0050896993
+  d2_ratio: 0.0134331543
+  peak_asym: -0.0016164203
+  energy_asym: -0.0007164010
+  frac_small: 0.0701111111
+
+Case: 5pct_noise
+Frequency: 50.000 Hz
+Crossings: 19
+Cycles: 18
+Cycle length: 1000..1000
+Features finite: True
+Mean features:
+  crest: 1.5627373982
+  skew: -0.0000813548
+  kurt: -1.4892837472
+  d1_ratio: 0.0050760706
+  d2_ratio: 0.0134521157
+  peak_asym: 0.0006435038
+  energy_asym: 0.0000560900
+  frac_small: 0.0709444444
+
+Case: 5pct_noise
+Frequency: 50.500 Hz
+Crossings: 19
+Cycles: 18
+Cycle length: 1000..1000
+Features finite: True
+Mean features:
+  crest: 1.5580744408
+  skew: 0.0014339313
+  kurt: -1.4907771449
+  d1_ratio: 0.0049375966
+  d2_ratio: 0.0130465002
+  peak_asym: 0.0011459812
+  energy_asym: 0.0007290637
+  frac_small: 0.0687222222
+
+Case: 20pct_noise
+Frequency: 49.500 Hz
+Crossings: 20
+Cycles: 19
+Cycle length: 1000..1000
+Features finite: True
+Mean features:
+  crest: 2.0524552235
+  skew: 0.0077044552
+  kurt: -1.3441150400
+  d1_ratio: 0.0779172838
+  d2_ratio: 0.2084475606
+  peak_asym: 0.0034660363
+  energy_asym: 0.0029482768
+  frac_small: 0.0977368421
+
+Case: 20pct_noise
+Frequency: 50.000 Hz
+Crossings: 19
+Cycles: 18
+Cycle length: 1000..1000
+Features finite: True
+Mean features:
+  crest: 1.9847126054
+  skew: -0.0004038062
+  kurt: -1.3510368576
+  d1_ratio: 0.0766369768
+  d2_ratio: 0.2037625691
+  peak_asym: 0.0045479974
+  energy_asym: -0.0006426159
+  frac_small: 0.0956111111
+
+Case: 20pct_noise
+Frequency: 50.500 Hz
+Crossings: 19
+Cycles: 18
+Cycle length: 1000..1000
+Features finite: True
+Mean features:
+  crest: 1.9793570466
+  skew: 0.0065680344
+  kurt: -1.3496411975
+  d1_ratio: 0.0753658354
+  d2_ratio: 0.2001100571
+  peak_asym: 0.0194764882
+  energy_asym: 0.0024652218
+  frac_small: 0.0930555556
+
+Case: 10pct_h3_5pct_noise
+Frequency: 49.500 Hz
+Crossings: 19
+Cycles: 18
+Cycle length: 1000..1000
+Features finite: True
+Mean features:
+  crest: 1.4310562135
+  skew: 0.0015513597
+  kurt: -1.6566692818
+  d1_ratio: 0.0050988423
+  d2_ratio: 0.0135945632
+  peak_asym: -0.0004567979
+  energy_asym: 0.0007023046
+  frac_small: 0.0498333333
+
+Case: 10pct_h3_5pct_noise
+Frequency: 50.000 Hz
+Crossings: 19
+Cycles: 18
+Cycle length: 1000..1000
+Features finite: True
+Mean features:
+  crest: 1.4223376640
+  skew: -0.0015774087
+  kurt: -1.6551617762
+  d1_ratio: 0.0043680979
+  d2_ratio: 0.0112348165
+  peak_asym: 0.0029320441
+  energy_asym: -0.0008139509
+  frac_small: 0.0511666667
+
+Case: 10pct_h3_5pct_noise
+Frequency: 50.500 Hz
+Crossings: 20
+Cycles: 19
+Cycle length: 1000..1000
+Features finite: True
+Mean features:
+  crest: 1.4390216769
+  skew: -0.0028853711
+  kurt: -1.6552762495
+  d1_ratio: 0.0048611880
+  d2_ratio: 0.0127540887
+  peak_asym: 0.0041914931
+  energy_asym: -0.0014326491
+  frac_small: 0.0488421053
+
+Case: 20pct_h3_10pct_h5_5pct_noise
+Frequency: 49.500 Hz
+Crossings: 19
+Cycles: 18
+Cycle length: 1000..1000
+Features finite: True
+Mean features:
+  crest: 1.3788499458
+  skew: -0.0003758796
+  kurt: -1.8015683948
+  d1_ratio: 0.0048266469
+  d2_ratio: 0.0127155510
+  peak_asym: -0.0030470437
+  energy_asym: -0.0002031552
+  frac_small: 0.0301666667
+
+Case: 20pct_h3_10pct_h5_5pct_noise
+Frequency: 50.000 Hz
+Crossings: 19
+Cycles: 18
+Cycle length: 1000..1000
+Features finite: True
+Mean features:
+  crest: 1.3753290491
+  skew: 0.0000032331
+  kurt: -1.8020598586
+  d1_ratio: 0.0044343318
+  d2_ratio: 0.0114569493
+  peak_asym: -0.0014407240
+  energy_asym: -0.0000359489
+  frac_small: 0.0307777778
+
+Case: 20pct_h3_10pct_h5_5pct_noise
+Frequency: 50.500 Hz
+Crossings: 19
+Cycles: 18
+Cycle length: 1000..1000
+Features finite: True
+Mean features:
+  crest: 1.3725865976
+  skew: 0.0004078089
+  kurt: -1.8018096592
+  d1_ratio: 0.0047006163
+  d2_ratio: 0.0122810501
+  peak_asym: -0.0046138367
+  energy_asym: 0.0002085776
+  frac_small: 0.0304444444
+
+Overall status: PASSED
