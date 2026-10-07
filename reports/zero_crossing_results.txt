@@ -1,0 +1,48 @@
+ZERO-CROSSING / CYCLE-SLICING VALIDATION
+===========================================
+
+Software simulation only.
+No hardware measurement is represented here.
+
+Sampling frequency = 50000 Hz
+Target cycle length = 1000 samples
+Test cycles/frequency = 12
+
+Results
+-------------------------------------------
+Input frequency      : 49.500 Hz
+Detected crossings   : 12
+Detected cycles      : 11
+Mean raw period      : 1010.1010 samples
+Min raw period       : 1010.1010 samples
+Max raw period       : 1010.1010 samples
+Measured frequency   : 49.500000 Hz
+Frequency error      : -0.000000 %
+Resampled length     : 1000..1000
+Mean cycle RMSE      : 0.00000144
+Max cycle RMSE       : 0.00000144
+
+Input frequency      : 50.000 Hz
+Detected crossings   : 12
+Detected cycles      : 11
+Mean raw period      : 1000.0000 samples
+Min raw period       : 1000.0000 samples
+Max raw period       : 1000.0000 samples
+Measured frequency   : 50.000000 Hz
+Frequency error      : +0.000000 %
+Resampled length     : 1000..1000
+Mean cycle RMSE      : 0.00000000
+Max cycle RMSE       : 0.00000000
+
+Input frequency      : 50.500 Hz
+Detected crossings   : 12
+Detected cycles      : 11
+Mean raw period      : 990.0990 samples
+Min raw period       : 990.0990 samples
+Max raw period       : 990.0990 samples
+Measured frequency   : 50.500000 Hz
+Frequency error      : -0.000000 %
+Resampled length     : 1000..1000
+Mean cycle RMSE      : 0.00000150
+Max cycle RMSE       : 0.00000150
+
