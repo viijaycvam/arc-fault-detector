@@ -1,0 +1,150 @@
+ROBUST ZERO-CROSSING TEST
+========================================
+
+Software simulation only.
+No hardware measurement.
+No official dataset samples used.
+
+Sampling rate: 50000 Hz
+Low-pass cutoff: 100.0 Hz
+Hysteresis: 0.100
+Minimum crossing interval: 700 samples
+
+Case: clean
+Input frequency: 49.500 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 1010.101016 samples
+Measured frequency: 49.499999690 Hz
+Frequency error: -0.000000627 %
+Period std: 0.000020041 samples
+
+Case: clean
+Input frequency: 50.000 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 1000.000005 samples
+Measured frequency: 49.999999761 Hz
+Frequency error: -0.000000478 %
+Period std: 0.000019700 samples
+
+Case: clean
+Input frequency: 50.500 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 990.099014 samples
+Measured frequency: 50.499999815 Hz
+Frequency error: -0.000000366 %
+Period std: 0.000030672 samples
+
+Case: 5pct_noise
+Input frequency: 49.500 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 1010.146145 samples
+Measured frequency: 49.497788277 Hz
+Frequency error: -0.004468128 %
+Period std: 0.913549479 samples
+
+Case: 5pct_noise
+Input frequency: 50.000 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 1000.012050 samples
+Measured frequency: 49.999397523 Hz
+Frequency error: -0.001204954 %
+Period std: 0.913845765 samples
+
+Case: 5pct_noise
+Input frequency: 50.500 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 990.071393 samples
+Measured frequency: 50.501408654 Hz
+Frequency error: +0.002789413 %
+Period std: 0.761073646 samples
+
+Case: 20pct_noise
+Input frequency: 49.500 Hz
+Detected crossings: 20
+Detected cycles: 19
+Mean period: 1010.506535 samples
+Measured frequency: 49.480135250 Hz
+Frequency error: -0.040130808 %
+Period std: 4.302528601 samples
+
+Case: 20pct_noise
+Input frequency: 50.000 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 1000.124418 samples
+Measured frequency: 49.993779866 Hz
+Frequency error: -0.012440268 %
+Period std: 3.596740826 samples
+
+Case: 20pct_noise
+Input frequency: 50.500 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 989.956211 samples
+Measured frequency: 50.507284522 Hz
+Frequency error: +0.014424795 %
+Period std: 3.352917415 samples
+
+Case: 10pct_h3_5pct_noise
+Input frequency: 49.500 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 1010.053420 samples
+Measured frequency: 49.502332247 Hz
+Frequency error: +0.004711610 %
+Period std: 0.871007153 samples
+
+Case: 10pct_h3_5pct_noise
+Input frequency: 50.000 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 1000.040773 samples
+Measured frequency: 49.997961434 Hz
+Frequency error: -0.004077133 %
+Period std: 0.798707299 samples
+
+Case: 10pct_h3_5pct_noise
+Input frequency: 50.500 Hz
+Detected crossings: 20
+Detected cycles: 19
+Mean period: 991.367993 samples
+Measured frequency: 50.435358390 Hz
+Frequency error: -0.128003189 %
+Period std: 5.102597786 samples
+
+Case: 20pct_h3_10pct_h5_5pct_noise
+Input frequency: 49.500 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 1010.106892 samples
+Measured frequency: 49.499711760 Hz
+Frequency error: -0.000582304 %
+Period std: 0.563157262 samples
+
+Case: 20pct_h3_10pct_h5_5pct_noise
+Input frequency: 50.000 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 999.920092 samples
+Measured frequency: 50.003995718 Hz
+Frequency error: +0.007991437 %
+Period std: 0.800185234 samples
+
+Case: 20pct_h3_10pct_h5_5pct_noise
+Input frequency: 50.500 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 990.063915 samples
+Measured frequency: 50.501790066 Hz
+Frequency error: +0.003544685 %
+Period std: 0.701460925 samples
+
+Failures
+========================================
+None

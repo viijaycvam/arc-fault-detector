@@ -1,0 +1,162 @@
+ZERO-CROSSING ROBUSTNESS TEST
+========================================
+
+Software simulation only.
+No hardware measurement.
+No official dataset samples used.
+
+Sampling rate: 50000 Hz
+Reference cycles: 20
+
+Case: clean
+Input frequency: 49.500 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 1010.101010 samples
+Measured frequency: 49.500000002 Hz
+Frequency error: +0.000000005 %
+Period std: 0.000000251 samples
+
+Case: clean
+Input frequency: 50.000 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 1000.000000 samples
+Measured frequency: 50.000000000 Hz
+Frequency error: +0.000000000 %
+Period std: 0.000000000 samples
+
+Case: clean
+Input frequency: 50.500 Hz
+Detected crossings: 19
+Detected cycles: 18
+Mean period: 990.099010 samples
+Measured frequency: 50.500000003 Hz
+Frequency error: +0.000000006 %
+Period std: 0.000000255 samples
+
+Case: 5pct_noise
+Input frequency: 49.500 Hz
+Detected crossings: 178
+Detected cycles: 177
+Mean period: 114.098852 samples
+Measured frequency: 438.216502639 Hz
+Frequency error: +785.285863917 %
+Period std: 203.133965156 samples
+
+Case: 5pct_noise
+Input frequency: 50.000 Hz
+Detected crossings: 187
+Detected cycles: 186
+Mean period: 107.507239 samples
+Measured frequency: 465.084960060 Hz
+Frequency error: +830.169920119 %
+Period std: 196.658409900 samples
+
+Case: 5pct_noise
+Input frequency: 50.500 Hz
+Detected crossings: 174
+Detected cycles: 173
+Mean period: 114.432609 samples
+Measured frequency: 436.938392155 Hz
+Frequency error: +765.224538920 %
+Period std: 200.018349935 samples
+
+Case: 20pct_noise
+Input frequency: 49.500 Hz
+Detected crossings: 760
+Detected cycles: 759
+Mean period: 26.613662 samples
+Measured frequency: 1878.734298165 Hz
+Frequency error: +3695.422824576 %
+Period std: 85.594857751 samples
+
+Case: 20pct_noise
+Input frequency: 50.000 Hz
+Detected crossings: 742
+Detected cycles: 741
+Mean period: 26.976603 samples
+Measured frequency: 1853.457975243 Hz
+Frequency error: +3606.915950486 %
+Period std: 85.139357914 samples
+
+Case: 20pct_noise
+Input frequency: 50.500 Hz
+Detected crossings: 716
+Detected cycles: 715
+Mean period: 27.686384 samples
+Measured frequency: 1805.941846120 Hz
+Frequency error: +3476.122467564 %
+Period std: 86.941716990 samples
+
+Case: 10pct_h3_5pct_noise
+Input frequency: 49.500 Hz
+Detected crossings: 149
+Detected cycles: 148
+Mean period: 136.472301 samples
+Measured frequency: 366.374713470 Hz
+Frequency error: +640.150936303 %
+Period std: 216.127878440 samples
+
+Case: 10pct_h3_5pct_noise
+Input frequency: 50.000 Hz
+Detected crossings: 140
+Detected cycles: 139
+Mean period: 143.864714 samples
+Measured frequency: 347.548740115 Hz
+Frequency error: +595.097480230 %
+Period std: 219.419518066 samples
+
+Case: 10pct_h3_5pct_noise
+Input frequency: 50.500 Hz
+Detected crossings: 127
+Detected cycles: 126
+Mean period: 157.119806 samples
+Measured frequency: 318.228498900 Hz
+Frequency error: +530.155443365 %
+Period std: 223.568894386 samples
+
+Case: 20pct_h3_10pct_h5_5pct_noise
+Input frequency: 49.500 Hz
+Detected crossings: 92
+Detected cycles: 91
+Mean period: 221.949414 samples
+Measured frequency: 225.276557844 Hz
+Frequency error: +355.104157261 %
+Period std: 277.973946280 samples
+
+Case: 20pct_h3_10pct_h5_5pct_noise
+Input frequency: 50.000 Hz
+Detected crossings: 94
+Detected cycles: 93
+Mean period: 214.997565 samples
+Measured frequency: 232.560773668 Hz
+Frequency error: +365.121547336 %
+Period std: 264.312492182 samples
+
+Case: 20pct_h3_10pct_h5_5pct_noise
+Input frequency: 50.500 Hz
+Detected crossings: 79
+Detected cycles: 78
+Mean period: 247.537943 samples
+Measured frequency: 201.989236240 Hz
+Frequency error: +299.978685624 %
+Period std: 290.709508816 samples
+
+Failures
+========================================
+('clean', 49.5, 'wrong cycle count')
+('clean', 50.0, 'wrong cycle count')
+('clean', 50.5, 'wrong cycle count')
+('5pct_noise', 49.5, 'wrong cycle count')
+('5pct_noise', 50.0, 'wrong cycle count')
+('5pct_noise', 50.5, 'wrong cycle count')
+('20pct_noise', 49.5, 'wrong cycle count')
+('20pct_noise', 50.0, 'wrong cycle count')
+('20pct_noise', 50.5, 'wrong cycle count')
+('10pct_h3_5pct_noise', 49.5, 'wrong cycle count')
+('10pct_h3_5pct_noise', 50.0, 'wrong cycle count')
+('10pct_h3_5pct_noise', 50.5, 'wrong cycle count')
+('20pct_h3_10pct_h5_5pct_noise', 49.5, 'wrong cycle count')
+('20pct_h3_10pct_h5_5pct_noise', 50.0, 'wrong cycle count')
+('20pct_h3_10pct_h5_5pct_noise', 50.5, 'wrong cycle count')
