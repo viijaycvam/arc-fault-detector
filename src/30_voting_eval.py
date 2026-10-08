@@ -25,7 +25,7 @@ NORMAL_CYCLES = 5_000_000          # about 27.8 hours of simulated normal operat
 SEQ_PER_CLASS, SEQ_LEN = 2000, 100  # arc sequences per class, cycles per sequence
 FAST = 25                           # "fast" detection = within 25 cycles = 0.5 s
 RULES = [(3, 3), (5, 3), (5, 4), (8, 5), (8, 6), (10, 7), (10, 8)]  # (window N, votes M)
-THRESHOLDS = [0.5, 0.7, 0.8, 0.9, 0.95]
+THRESHOLDS = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95]
 rng = np.random.default_rng(0)
 lines = []
 
