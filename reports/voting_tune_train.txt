@@ -1,0 +1,94 @@
+========================================================================
+TRAINING-ONLY TEMPORAL VOTING TUNER
+========================================================================
+Training records : 1334
+Normal records   : 863
+Arc records      : 471
+Block bootstrap  : 5 cycles
+Normal simulation: 5,000,000 cycles
+Arc sequences/class: 2,000
+Detection limit  : 25 cycles (0.5 s)
+Random seed      : 12345
+
+Normal contiguous runs: 26
+Arc class  1: 2 run(s), 30 cycles
+Arc class  2: 2 run(s), 22 cycles
+Arc class  3: 2 run(s), 46 cycles
+Arc class  4: 2 run(s), 26 cycles
+Arc class  5: 1 run(s), 33 cycles
+Arc class  6: 2 run(s), 42 cycles
+Arc class  7: 1 run(s), 33 cycles
+Arc class  8: 1 run(s), 30 cycles
+Arc class  9: 2 run(s), 23 cycles
+Arc class 10: 2 run(s), 52 cycles
+Arc class 11: 2 run(s), 33 cycles
+Arc class 12: 4 run(s), 69 cycles
+Arc class 13: 2 run(s), 32 cycles
+
+RULE RESULTS
+------------------------------------------------------------------------
+rule   thr    FT/hour     meanDet     worstCls  worstDet    medDelay  
+3/3   0.50   0.072       0.918       class 1    0.000       3.0       
+3/5   0.50   0.216       0.922       class 1    0.000       5.0       
+4/5   0.50   0.072       0.916       class 1    0.000       5.0       
+5/8   0.50   0.108       0.916       class 1    0.000       8.0       
+6/8   0.50   0.108       0.902       class 1    0.000       8.0       
+7/10  0.50   0.108       0.900       class 1    0.000       10.0      
+8/10  0.50   0.108       0.878       class 1    0.000       10.0      
+3/3   0.60   0.108       0.918       class 1    0.000       3.0       
+3/5   0.60   0.180       0.923       class 1    0.000       5.0       
+4/5   0.60   0.108       0.915       class 1    0.000       5.0       
+5/8   0.60   0.108       0.918       class 1    0.000       8.0       
+6/8   0.60   0.108       0.900       class 1    0.000       8.0       
+7/10  0.60   0.108       0.899       class 1    0.000       10.0      
+8/10  0.60   0.108       0.876       class 1    0.000       10.0      
+3/3   0.70   0.036       0.918       class 1    0.000       3.0       
+3/5   0.70   0.252       0.923       class 1    0.000       5.0       
+4/5   0.70   0.108       0.916       class 1    0.000       5.0       
+5/8   0.70   0.108       0.918       class 1    0.000       8.0       
+6/8   0.70   0.108       0.902       class 1    0.000       8.0       
+7/10  0.70   0.108       0.900       class 1    0.000       10.0      
+8/10  0.70   0.108       0.877       class 1    0.000       10.0      
+3/3   0.80   0.144       0.918       class 1    0.000       3.0       
+3/5   0.80   0.108       0.923       class 1    0.000       5.0       
+4/5   0.80   0.108       0.916       class 1    0.000       5.0       
+5/8   0.80   0.108       0.917       class 1    0.000       8.0       
+6/8   0.80   0.108       0.899       class 1    0.000       8.0       
+7/10  0.80   0.108       0.900       class 1    0.000       10.0      
+8/10  0.80   0.108       0.875       class 1    0.000       10.0      
+3/3   0.90   0.036       0.918       class 1    0.000       3.0       
+3/5   0.90   0.360       0.923       class 1    0.000       5.0       
+4/5   0.90   0.108       0.916       class 1    0.000       5.0       
+5/8   0.90   0.108       0.917       class 1    0.000       8.0       
+6/8   0.90   0.108       0.900       class 1    0.000       8.0       
+7/10  0.90   0.108       0.899       class 1    0.000       10.0      
+8/10  0.90   0.108       0.874       class 1    0.000       10.0      
+3/3   0.95   0.108       0.917       class 1    0.000       3.0       
+3/5   0.95   0.108       0.923       class 1    0.000       5.0       
+4/5   0.95   0.036       0.915       class 1    0.000       5.0       
+5/8   0.95   0.108       0.917       class 1    0.000       8.0       
+6/8   0.95   0.108       0.897       class 1    0.000       8.0       
+7/10  0.95   0.108       0.896       class 1    0.000       10.0      
+8/10  0.95   0.108       0.863       class 1    0.000       10.0      
+
+TOP TRAINING-SET CANDIDATES
+------------------------------------------------------------------------
+ 1. 3/3 thr=0.70 FT/hour=0.036 meanDet=0.918 worst=class 1 0.000 median=3.0
+ 2. 3/3 thr=0.90 FT/hour=0.036 meanDet=0.918 worst=class 1 0.000 median=3.0
+ 3. 4/5 thr=0.95 FT/hour=0.036 meanDet=0.915 worst=class 1 0.000 median=5.0
+ 4. 3/3 thr=0.50 FT/hour=0.072 meanDet=0.918 worst=class 1 0.000 median=3.0
+ 5. 4/5 thr=0.50 FT/hour=0.072 meanDet=0.916 worst=class 1 0.000 median=5.0
+ 6. 3/5 thr=0.80 FT/hour=0.108 meanDet=0.923 worst=class 1 0.000 median=5.0
+ 7. 3/5 thr=0.95 FT/hour=0.108 meanDet=0.923 worst=class 1 0.000 median=5.0
+ 8. 3/3 thr=0.60 FT/hour=0.108 meanDet=0.918 worst=class 1 0.000 median=3.0
+ 9. 5/8 thr=0.60 FT/hour=0.108 meanDet=0.918 worst=class 1 0.000 median=8.0
+10. 5/8 thr=0.70 FT/hour=0.108 meanDet=0.918 worst=class 1 0.000 median=8.0
+
+IMPORTANT LIMITATIONS
+- Training data only; no test data was used for tuning.
+- Record adjacency is used as a proxy for local correlation.
+- No explicit appliance/session identifier exists in features_b.csv.
+- Block bootstrap preserves short-range score correlation but is not
+  a measurement of real appliance behavior.
+- False-trip estimates are simulation estimates, not field rates.
+- The selected rule MUST be frozen before test-set evaluation.

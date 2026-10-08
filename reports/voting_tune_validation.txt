@@ -1,0 +1,122 @@
+========================================================================
+POST-HOC VALIDATION OF FROZEN DEPLOYED MODEL
+========================================================================
+Full training records : 1334
+Official test records  : 1334
+Post-hoc validation    : 338
+Official test split is NOT used for tuning.
+Neural-network weights are fixed; no retraining occurs.
+Validation fraction/run: 20%
+Bootstrap block size   : 5 cycles
+Normal simulation      : 1,000,000 cycles
+Arc sequences/class    : 2,000
+Detection limit        : 25 cycles (0.50 s)
+Random seed            : 24680
+
+FROZEN MODEL SANITY CHECK
+------------------------------------------------------------------------
+TN/FP/FN/TP = 850/11/81/392
+Sanity check: PASS
+
+VALIDATION DATA
+------------------------------------------------------------------------
+Class 0 normal cycles : 202
+Class  1 arc cycles :  10 (2 blocks)
+Class  2 arc cycles :  10 (2 blocks)
+Class  3 arc cycles :  10 (2 blocks)
+Class  4 arc cycles :  10 (2 blocks)
+Class  5 arc cycles :   7 (1 blocks)
+Class  6 arc cycles :  10 (2 blocks)
+Class  7 arc cycles :   7 (1 blocks)
+Class  8 arc cycles :   6 (1 blocks)
+Class  9 arc cycles :  10 (2 blocks)
+Class 10 arc cycles :  13 (2 blocks)
+Class 11 arc cycles :  10 (2 blocks)
+Class 12 arc cycles :  23 (4 blocks)
+Class 13 arc cycles :  10 (2 blocks)
+
+VALIDATION PER-CYCLE RESULTS
+------------------------------------------------------------------------
+thr=0.50 TN=202 FP=0 FN=20 TP=116 FTR=0.000% Det=85.294%
+thr=0.60 TN=202 FP=0 FN=20 TP=116 FTR=0.000% Det=85.294%
+thr=0.70 TN=202 FP=0 FN=22 TP=114 FTR=0.000% Det=83.824%
+thr=0.80 TN=202 FP=0 FN=22 TP=114 FTR=0.000% Det=83.824%
+thr=0.90 TN=202 FP=0 FN=24 TP=112 FTR=0.000% Det=82.353%
+thr=0.95 TN=202 FP=0 FN=28 TP=108 FTR=0.000% Det=79.412%
+
+TEMPORAL RULE RESULTS
+------------------------------------------------------------------------
+rule   thr    FT/hour    meanDet    worstClass  worstDet    medianDelay
+3/3    0.50   <0.540    0.921      1          0.000       4.0
+3/5    0.50   <0.540    0.920      1          0.000       6.0
+4/5    0.50   <0.540    0.908      1          0.000       6.0
+5/8    0.50   <0.540    0.890      1          0.000       9.0
+6/8    0.50   <0.540    0.891      1          0.000       9.0
+7/10   0.50   <0.540    0.874      1          0.000       11.0
+8/10   0.50   <0.540    0.846      1          0.000       11.0
+3/3    0.60   <0.540    0.921      1          0.000       4.0
+3/5    0.60   <0.540    0.921      1          0.000       6.0
+4/5    0.60   <0.540    0.908      1          0.000       6.0
+5/8    0.60   <0.540    0.891      1          0.000       9.0
+6/8    0.60   <0.540    0.893      1          0.000       9.0
+7/10   0.60   <0.540    0.875      1          0.000       11.0
+8/10   0.60   <0.540    0.846      1          0.000       11.0
+3/3    0.70   <0.540    0.920      1          0.000       4.0
+3/5    0.70   <0.540    0.921      1          0.000       6.0
+4/5    0.70   <0.540    0.908      1          0.000       6.0
+5/8    0.70   <0.540    0.892      1          0.000       9.0
+6/8    0.70   <0.540    0.890      1          0.000       9.0
+7/10   0.70   <0.540    0.875      1          0.000       11.0
+8/10   0.70   <0.540    0.846      1          0.000       11.0
+3/3    0.80   <0.540    0.920      1          0.000       4.0
+3/5    0.80   <0.540    0.921      1          0.000       6.0
+4/5    0.80   <0.540    0.909      1          0.000       6.0
+5/8    0.80   <0.540    0.890      1          0.000       9.0
+6/8    0.80   <0.540    0.892      1          0.000       9.0
+7/10   0.80   <0.540    0.875      1          0.000       11.0
+8/10   0.80   <0.540    0.846      1          0.000       11.0
+3/3    0.90   <0.540    0.921      1          0.000       4.0
+3/5    0.90   <0.540    0.921      1          0.000       6.0
+4/5    0.90   <0.540    0.909      1          0.000       6.0
+5/8    0.90   <0.540    0.893      1          0.000       9.0
+6/8    0.90   <0.540    0.893      1          0.000       9.0
+7/10   0.90   <0.540    0.875      1          0.000       11.0
+8/10   0.90   <0.540    0.846      1          0.000       11.0
+3/3    0.95   <0.540    0.918      1          0.000       4.0
+3/5    0.95   <0.540    0.918      1          0.000       6.0
+4/5    0.95   <0.540    0.906      1          0.000       6.0
+5/8    0.95   <0.540    0.890      1          0.000       9.0
+6/8    0.95   <0.540    0.883      1          0.000       9.0
+7/10   0.95   <0.540    0.844      1          0.000       11.0
+8/10   0.95   <0.540    0.807      1          0.000       11.0
+
+TOP VALIDATION CANDIDATES
+------------------------------------------------------------------------
+ 1. 3/5 thr=0.60 FT/hour=<0.540 meanDet=0.921 worst=class 1 0.000 median=6.0
+ 2. 3/5 thr=0.80 FT/hour=<0.540 meanDet=0.921 worst=class 1 0.000 median=6.0
+ 3. 3/5 thr=0.90 FT/hour=<0.540 meanDet=0.921 worst=class 1 0.000 median=6.0
+ 4. 3/3 thr=0.90 FT/hour=<0.540 meanDet=0.921 worst=class 1 0.000 median=4.0
+ 5. 3/5 thr=0.70 FT/hour=<0.540 meanDet=0.921 worst=class 1 0.000 median=6.0
+ 6. 3/3 thr=0.60 FT/hour=<0.540 meanDet=0.921 worst=class 1 0.000 median=4.0
+ 7. 3/3 thr=0.50 FT/hour=<0.540 meanDet=0.921 worst=class 1 0.000 median=4.0
+ 8. 3/3 thr=0.80 FT/hour=<0.540 meanDet=0.920 worst=class 1 0.000 median=4.0
+ 9. 3/3 thr=0.70 FT/hour=<0.540 meanDet=0.920 worst=class 1 0.000 median=4.0
+10. 3/5 thr=0.50 FT/hour=<0.540 meanDet=0.920 worst=class 1 0.000 median=6.0
+
+IMPORTANT INTERPRETATION
+------------------------------------------------------------------------
+- The neural-network weights are fixed.
+- No official test records were used for tuning.
+- This is POST-HOC validation because the frozen model
+  was originally trained on the full training split.
+- Therefore these results must not be described as an
+  independent model-validation result.
+- Record adjacency is only a proxy for temporal correlation.
+- The 5-cycle block bootstrap is a simulation, not a
+  measurement of real appliance persistence.
+- False trips/hour are simulation estimates, not field rates.
+- A zero observed false-trip count means an upper bound,
+  not a true zero probability.
+- Hard arc classes remain visible in the class-wise results.
+- The final voting rule must be frozen before the official
+  test-set evaluation.
