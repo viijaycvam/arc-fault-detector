@@ -1,0 +1,32 @@
+======================================================================
+EDGE-AI ARC FAULT DETECTOR — MLP TRAINING & C EXPORT PIPELINE
+======================================================================
+Train records : 1334
+Test records  : 1334
+Feature count : 8
+
+--- CONFUSION MATRIX ---
+TN: 850   FP: 11   
+FN: 81    TP: 392  
+
+Accuracy        : 93.10%
+False-Trip Rate : 1.28%
+Arc Detection   : 82.88%
+
+--- CLASSIFICATION REPORT ---
+              precision    recall  f1-score   support
+
+      NORMAL     0.9130    0.9872    0.9487       861
+         ARC     0.9727    0.8288    0.8950       473
+
+    accuracy                         0.9310      1334
+   macro avg     0.9429    0.9080    0.9218      1334
+weighted avg     0.9342    0.9310    0.9296      1334
+
+--- FORWARD PASS VERIFICATION ---
+Prediction Mismatches : 0
+Max Probability Error : 0.0000000000e+00
+
+Successfully generated golden cycles: src\golden_cycles.h
+Successfully exported model weights to : src\model_weights_b.h
+Successfully exported scaler parameters to: src\scaler_b.h
