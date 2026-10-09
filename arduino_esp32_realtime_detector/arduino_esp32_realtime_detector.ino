@@ -1,0 +1,2283 @@
+#include <Arduino.h>
+#include <math.h>
+
+#include "driver/adc.h"
+#include "esp_adc/adc_continuous.h"
+#include "esp_err.h"
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+extern "C" {
+#include "feature_extraction.h"
+}
+
+#include "tinyml_engine_b.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+
+// ============================================================
+// ESP32 REAL-TIME ARC-FAULT DETECTOR
+//
+// SAFE HARDWARE-IN-THE-LOOP PROTOTYPE
+//
+// Signal path:
+//
+//   ESP32 DAC GPIO25
+//          |
+//          v
+//   safe jumper D25 -> D34
+//          |
+//          v
+//   ESP32 ADC GPIO34 / ADC1_CH6
+//          |
+//          v
+//   50 kHz ADC DMA
+//          |
+//          v
+//   7040-sample analysis window
+//          |
+//          v
+//   robust cycle detection
+//          |
+//          v
+//   1000-sample cycle resampling
+//          |
+//          v
+//   8 verified features
+//          |
+//          v
+//   frozen TinyML MLP
+//          |
+//          v
+//   probability threshold = 0.60
+//          |
+//          v
+//   3-of-5 temporal vote
+//          |
+//          v
+//   NORMAL / ARC
+//
+// IMPORTANT:
+//   - NO MAINS.
+//   - NO REAL ARC.
+//   - Internal DAC is only a safe HIL source.
+//   - ADC is intentionally started fresh for every window.
+//   - This avoids processing-time DMA backlog.
+// ============================================================
+
+
+// ------------------------------------------------------------
+// DAC configuration
+// ------------------------------------------------------------
+
+#define DAC_PIN                 25
+
+#define DAC_UPDATE_HZ           1000
+#define DAC_WAVEFORM_HZ         50.0f
+
+#define DAC_MIDPOINT            128.0f
+#define DAC_AMPLITUDE           70.0f
+
+
+// ------------------------------------------------------------
+// ADC configuration
+// ------------------------------------------------------------
+
+#define ADC_PIN                 34
+#define ADC_CHANNEL             ADC_CHANNEL_6
+
+#define SAMPLE_RATE_HZ          50000
+
+// 7040 samples:
+//
+// 7040 / 50000 = 0.1408 s
+//              = 140.8 ms
+//
+// DMA frame:
+//
+// 256 bytes / 2 bytes per result = 128 samples/frame
+//
+// 7040 / 128 = 55 complete frames
+//
+// Therefore each acquisition window consumes an exact
+// number of complete DMA frames.
+
+#define ACQUISITION_SAMPLES     7040
+
+#define FRAME_BYTES             256
+
+#define DMA_STORE_BYTES         16384
+
+
+// ------------------------------------------------------------
+// Cycle slicing
+// ------------------------------------------------------------
+
+#define TARGET_CYCLE_LEN        1000
+
+#define MAX_CROSSINGS           16
+
+#define LOWPASS_CUTOFF_HZ       100.0f
+
+#define HYSTERESIS              0.10f
+
+#define MIN_CROSSING_INTERVAL   700.0f
+
+
+// ------------------------------------------------------------
+// Temporal voting
+//
+// FROZEN PROJECT DECISION:
+//
+//     3-of-5
+//
+// FROZEN VOTING THRESHOLD:
+//
+//     probability >= 0.60
+// ------------------------------------------------------------
+
+#define VOTE_CYCLES             5
+
+#define ARC_VOTE_THRESHOLD      3
+
+#define PROBABILITY_THRESHOLD   0.60f
+
+// ------------------------------------------------------------
+// Diagnostics
+//
+// 0 = clean timing path (recommended final detector)
+// 1 = print C1 raw waveform samples + 8 features
+//     (diagnostic only; Serial printing changes timing)
+// ------------------------------------------------------------
+
+#ifndef ENABLE_CYCLE_DIAGNOSTICS
+#define ENABLE_CYCLE_DIAGNOSTICS 1
+#endif
+
+
+// ------------------------------------------------------------
+// Cycle frequency acceptance
+//
+// The signal is expected to be approximately 50 Hz.
+//
+// These limits are only a sanity check for the safe HIL
+// waveform and do not replace the ML classifier.
+// ------------------------------------------------------------
+
+#define MIN_ACCEPTABLE_HZ       45.0f
+#define MAX_ACCEPTABLE_HZ       55.0f
+
+
+// ------------------------------------------------------------
+// Buffers
+// ------------------------------------------------------------
+
+static uint16_t adc_samples[
+    ACQUISITION_SAMPLES
+];
+
+static float resampled_cycle[
+    TARGET_CYCLE_LEN
+];
+
+static float crossing_positions[
+    MAX_CROSSINGS
+];
+
+static float cycle_probabilities[
+    VOTE_CYCLES
+];
+
+static int cycle_predictions[
+    VOTE_CYCLES
+];
+
+
+// ------------------------------------------------------------
+// ADC handle
+//
+// Important:
+// The handle is created, used, stopped, and destroyed once
+// per processing window.
+// ------------------------------------------------------------
+
+static adc_continuous_handle_t adc_handle = NULL;
+
+
+// ------------------------------------------------------------
+// DAC task state
+// ------------------------------------------------------------
+
+static volatile bool waveform_running = false;
+
+static TaskHandle_t dac_task_handle = NULL;
+
+
+// ------------------------------------------------------------
+// Running counters
+// ------------------------------------------------------------
+
+static uint32_t window_counter = 0;
+
+static uint32_t successful_windows = 0;
+
+static uint32_t insufficient_cycle_windows = 0;
+
+static uint32_t failed_windows = 0;
+
+static uint32_t final_arc_windows = 0;
+
+static uint32_t final_normal_windows = 0;
+
+
+// ============================================================
+// DAC waveform generator task
+// ============================================================
+
+static void dac_waveform_task(
+    void *parameter
+)
+{
+    (void)parameter;
+
+
+    uint32_t sample_index = 0;
+
+    // Keep DAC updates on a regular 1 ms schedule instead of
+    // accumulating scheduler delay from vTaskDelay(1).
+    TickType_t last_wake = xTaskGetTickCount();
+
+
+    const float phase_step =
+        2.0f *
+        (float)M_PI *
+        DAC_WAVEFORM_HZ /
+        (float)DAC_UPDATE_HZ;
+
+
+    dacWrite(
+        DAC_PIN,
+        (uint8_t)DAC_MIDPOINT
+    );
+
+
+    while (
+        waveform_running
+    )
+    {
+        float phase =
+            phase_step *
+            (float)sample_index;
+
+
+        float sine_value =
+            sinf(
+                phase
+            );
+
+
+        float dac_value =
+            DAC_MIDPOINT +
+            DAC_AMPLITUDE *
+            sine_value;
+
+
+        if (
+            dac_value <
+            0.0f
+        )
+        {
+            dac_value = 0.0f;
+        }
+
+
+        if (
+            dac_value >
+            255.0f
+        )
+        {
+            dac_value = 255.0f;
+        }
+
+
+        dacWrite(
+            DAC_PIN,
+            (uint8_t)dac_value
+        );
+
+
+        sample_index++;
+
+
+        // Same safe DAC generation mechanism as the
+        // previously verified HIL test.
+
+        vTaskDelayUntil(
+            &last_wake,
+            pdMS_TO_TICKS(1)
+        );
+    }
+
+
+    dacWrite(
+        DAC_PIN,
+        (uint8_t)DAC_MIDPOINT
+    );
+
+
+    dac_task_handle = NULL;
+
+
+    vTaskDelete(NULL);
+}
+
+
+// ============================================================
+// Start DAC waveform
+// ============================================================
+
+static bool start_waveform()
+{
+    waveform_running = true;
+
+
+    BaseType_t result =
+        xTaskCreatePinnedToCore(
+            dac_waveform_task,
+            "DACWaveform",
+            2048,
+            NULL,
+            1,
+            &dac_task_handle,
+            0
+        );
+
+
+    if (
+        result !=
+        pdPASS
+    )
+    {
+        waveform_running = false;
+
+        dac_task_handle = NULL;
+
+        return false;
+    }
+
+
+    return true;
+}
+
+
+// ============================================================
+// Stop DAC waveform
+// ============================================================
+
+static void stop_waveform()
+{
+    waveform_running = false;
+
+
+    for (
+        int i = 0;
+        i < 20 &&
+        dac_task_handle != NULL;
+        i++
+    )
+    {
+        delay(1);
+    }
+
+
+    dacWrite(
+        DAC_PIN,
+        (uint8_t)DAC_MIDPOINT
+    );
+}
+
+
+// ============================================================
+// Start one ADC DMA session
+// ============================================================
+
+static bool start_adc()
+{
+    adc_continuous_handle_cfg_t handle_config = {};
+
+
+    handle_config.max_store_buf_size =
+        DMA_STORE_BYTES;
+
+
+    handle_config.conv_frame_size =
+        FRAME_BYTES;
+
+
+    esp_err_t err =
+        adc_continuous_new_handle(
+            &handle_config,
+            &adc_handle
+        );
+
+
+    if (
+        err !=
+        ESP_OK
+    )
+    {
+        Serial.printf(
+            "ERROR: ADC handle creation failed: 0x%X\n",
+            err
+        );
+
+
+        adc_handle = NULL;
+
+
+        return false;
+    }
+
+
+    adc_digi_pattern_config_t pattern = {};
+
+
+    pattern.atten =
+        ADC_ATTEN_DB_11;
+
+
+    pattern.channel =
+        ADC_CHANNEL;
+
+
+    pattern.unit =
+        ADC_UNIT_1;
+
+
+    pattern.bit_width =
+        ADC_BITWIDTH_12;
+
+
+    adc_continuous_config_t config = {};
+
+
+    config.sample_freq_hz =
+        SAMPLE_RATE_HZ;
+
+
+    config.conv_mode =
+        ADC_CONV_SINGLE_UNIT_1;
+
+
+    config.format =
+        ADC_DIGI_OUTPUT_FORMAT_TYPE1;
+
+
+    config.pattern_num =
+        1;
+
+
+    config.adc_pattern =
+        &pattern;
+
+
+    err =
+        adc_continuous_config(
+            adc_handle,
+            &config
+        );
+
+
+    if (
+        err !=
+        ESP_OK
+    )
+    {
+        Serial.printf(
+            "ERROR: ADC configuration failed: 0x%X\n",
+            err
+        );
+
+
+        adc_continuous_deinit(
+            adc_handle
+        );
+
+
+        adc_handle = NULL;
+
+
+        return false;
+    }
+
+
+    err =
+        adc_continuous_start(
+            adc_handle
+        );
+
+
+    if (
+        err !=
+        ESP_OK
+    )
+    {
+        Serial.printf(
+            "ERROR: ADC start failed: 0x%X\n",
+            err
+        );
+
+
+        adc_continuous_deinit(
+            adc_handle
+        );
+
+
+        adc_handle = NULL;
+
+
+        return false;
+    }
+
+
+    return true;
+}
+
+
+// ============================================================
+// Flush any startup DMA data
+//
+// This makes sample 0 of the actual analysis window correspond
+// to data acquired after the ADC startup transient.
+// ============================================================
+
+static void flush_startup_data()
+{
+    uint8_t dma_buffer[
+        FRAME_BYTES
+    ];
+
+
+    while (true)
+    {
+        uint32_t bytes_read = 0;
+
+
+        esp_err_t err =
+            adc_continuous_read(
+                adc_handle,
+                dma_buffer,
+                sizeof(dma_buffer),
+                &bytes_read,
+                0
+            );
+
+
+        if (
+            err ==
+            ESP_ERR_TIMEOUT
+        )
+        {
+            break;
+        }
+
+
+        if (
+            err !=
+            ESP_OK
+        )
+        {
+            break;
+        }
+    }
+}
+
+
+// ============================================================
+// Acquire exactly 7040 ADC samples
+// ============================================================
+
+static bool acquire_samples(
+    uint32_t &elapsed_us
+)
+{
+    uint8_t dma_buffer[
+        FRAME_BYTES
+    ];
+
+
+    uint32_t sample_count = 0;
+
+
+    uint32_t start_us =
+        micros();
+
+
+    while (
+        sample_count <
+        ACQUISITION_SAMPLES
+    )
+    {
+        uint32_t bytes_read = 0;
+
+
+        esp_err_t err =
+            adc_continuous_read(
+                adc_handle,
+                dma_buffer,
+                sizeof(dma_buffer),
+                &bytes_read,
+                100
+            );
+
+
+        if (
+            err ==
+            ESP_ERR_TIMEOUT
+        )
+        {
+            continue;
+        }
+
+
+        if (
+            err !=
+            ESP_OK
+        )
+        {
+            Serial.printf(
+                "ERROR: ADC read failed: 0x%X\n",
+                err
+            );
+
+
+            elapsed_us =
+                micros() -
+                start_us;
+
+
+            return false;
+        }
+
+
+        // One Type-1 ADC result occupies 2 bytes.
+
+        for (
+            uint32_t i = 0;
+            i + 1 < bytes_read;
+            i += 2
+        )
+        {
+            if (
+                sample_count >=
+                ACQUISITION_SAMPLES
+            )
+            {
+                break;
+            }
+
+
+            uint16_t word =
+                (
+                    (uint16_t)
+                    dma_buffer[i]
+                )
+                |
+                (
+                    (
+                        (uint16_t)
+                        dma_buffer[i + 1]
+                    )
+                    << 8
+                );
+
+
+            uint16_t channel =
+                (
+                    word >>
+                    12
+                )
+                &
+                0x0F;
+
+
+            uint16_t raw =
+                word &
+                0x0FFF;
+
+
+            if (
+                channel ==
+                ADC_CHANNEL
+            )
+            {
+                adc_samples[
+                    sample_count
+                ] =
+                    raw;
+
+
+                sample_count++;
+            }
+        }
+    }
+
+
+    elapsed_us =
+        micros() -
+        start_us;
+
+
+    return (
+        sample_count ==
+        ACQUISITION_SAMPLES
+    );
+}
+
+
+// ============================================================
+// Mean
+// ============================================================
+
+static float calculate_mean()
+{
+    uint64_t sum = 0;
+
+
+    for (
+        int i = 0;
+        i < ACQUISITION_SAMPLES;
+        i++
+    )
+    {
+        sum +=
+            adc_samples[i];
+    }
+
+
+    return (
+        (float)sum /
+        (float)ACQUISITION_SAMPLES
+    );
+}
+
+
+// ============================================================
+// Peak absolute centered signal
+// ============================================================
+
+static float calculate_signal_scale(
+    float dc_mean
+)
+{
+    float max_abs = 0.0f;
+
+
+    for (
+        int i = 0;
+        i < ACQUISITION_SAMPLES;
+        i++
+    )
+    {
+        float centered =
+            (
+                (float)
+                adc_samples[i]
+                -
+                dc_mean
+            );
+
+
+        float magnitude =
+            fabsf(
+                centered
+            );
+
+
+        if (
+            magnitude >
+            max_abs
+        )
+        {
+            max_abs =
+                magnitude;
+        }
+    }
+
+
+    if (
+        max_abs <
+        1e-6f
+    )
+    {
+        max_abs = 1.0f;
+    }
+
+
+    return max_abs;
+}
+
+
+// ============================================================
+// Robust rising zero-crossing detector
+// ============================================================
+
+static int detect_crossings(
+    float dc_mean,
+    float signal_scale
+)
+{
+    int crossing_count = 0;
+
+
+    int state = 0;
+
+
+    float last_crossing = -1.0f;
+
+
+    float dt =
+        1.0f /
+        (float)SAMPLE_RATE_HZ;
+
+
+    float rc =
+        1.0f /
+        (
+            2.0f *
+            (float)M_PI *
+            LOWPASS_CUTOFF_HZ
+        );
+
+
+    float alpha =
+        dt /
+        (rc + dt);
+
+
+    float first_centered =
+        (
+            (
+                (float)
+                adc_samples[0]
+                -
+                dc_mean
+            )
+            /
+            signal_scale
+        );
+
+
+    float previous_filtered =
+        first_centered;
+
+
+    for (
+        int i = 1;
+        i < ACQUISITION_SAMPLES;
+        i++
+    )
+    {
+        float centered =
+            (
+                (
+                    (float)
+                    adc_samples[i]
+                    -
+                    dc_mean
+                )
+                /
+                signal_scale
+            );
+
+
+        float current_filtered =
+            previous_filtered
+            +
+            alpha *
+            (
+                centered
+                -
+                previous_filtered
+            );
+
+
+        float previous =
+            previous_filtered;
+
+
+        float current =
+            current_filtered;
+
+
+        // State 0:
+        // waiting until the filtered signal goes
+        // sufficiently negative.
+
+        if (
+            state ==
+            0
+        )
+        {
+            if (
+                current <=
+                -HYSTERESIS
+            )
+            {
+                state = 1;
+            }
+        }
+
+        // State 1:
+        // wait for a rising transition through +HYSTERESIS.
+
+        else
+        {
+            if (
+                previous <
+                HYSTERESIS
+                &&
+                current >=
+                HYSTERESIS
+            )
+            {
+                float denominator =
+                    current -
+                    previous;
+
+
+                float crossing;
+
+
+                if (
+                    fabsf(
+                        denominator
+                    )
+                    <
+                    1e-15f
+                )
+                {
+                    crossing =
+                        (float)i;
+                }
+                else
+                {
+                    crossing =
+                        (float)(i - 1)
+                        +
+                        (
+                            (
+                                HYSTERESIS
+                                -
+                                previous
+                            )
+                            /
+                            denominator
+                        );
+                }
+
+
+                // Ignore crossings that occur too close
+                // to the previous accepted crossing.
+
+                if (
+                    last_crossing <
+                    0.0f
+                    ||
+                    (
+                        crossing -
+                        last_crossing
+                    )
+                    >=
+                    MIN_CROSSING_INTERVAL
+                )
+                {
+                    if (
+                        crossing_count <
+                        MAX_CROSSINGS
+                    )
+                    {
+                        crossing_positions[
+                            crossing_count
+                        ] =
+                            crossing;
+
+
+                        crossing_count++;
+                    }
+
+
+                    last_crossing =
+                        crossing;
+
+
+                    state = 0;
+                }
+            }
+        }
+
+
+        previous_filtered =
+            current_filtered;
+    }
+
+
+    return crossing_count;
+}
+
+
+// ============================================================
+// Interpolate centered raw ADC
+// ============================================================
+
+static float interpolate_raw(
+    float position,
+    float dc_mean
+)
+{
+    if (
+        position <=
+        0.0f
+    )
+    {
+        return (
+            (float)
+            adc_samples[0]
+            -
+            dc_mean
+        );
+    }
+
+
+    if (
+        position >=
+        (float)(
+            ACQUISITION_SAMPLES -
+            1
+        )
+    )
+    {
+        return (
+            (
+                (float)
+                adc_samples[
+                    ACQUISITION_SAMPLES -
+                    1
+                ]
+            )
+            -
+            dc_mean
+        );
+    }
+
+
+    int index =
+        (int)floorf(
+            position
+        );
+
+
+    float fraction =
+        position -
+        (float)index;
+
+
+    float x0 =
+        (
+            (float)
+            adc_samples[index]
+            -
+            dc_mean
+        );
+
+
+    float x1 =
+        (
+            (float)
+            adc_samples[index + 1]
+            -
+            dc_mean
+        );
+
+
+    return (
+        x0
+        +
+        fraction *
+        (
+            x1 -
+            x0
+        )
+    );
+}
+
+
+// ============================================================
+// Resample one raw cycle to exactly 1000 points
+// ============================================================
+
+static void resample_cycle(
+    float start,
+    float end,
+    float dc_mean
+)
+{
+    float span =
+        end -
+        start;
+
+
+    for (
+        int i = 0;
+        i < TARGET_CYCLE_LEN;
+        i++
+    )
+    {
+        float position =
+            start
+            +
+            (
+                (float)i /
+                (float)TARGET_CYCLE_LEN
+            )
+            *
+            span;
+
+
+        resampled_cycle[i] =
+            interpolate_raw(
+                position,
+                dc_mean
+            );
+    }
+}
+
+
+// ============================================================
+// Validate that the first five selected cycles look like
+// approximately 50 Hz cycles.
+// ============================================================
+
+static bool validate_cycle_frequencies(
+    int crossing_count
+)
+{
+    if (
+        crossing_count <
+        (
+            VOTE_CYCLES +
+            1
+        )
+    )
+    {
+        return false;
+    }
+
+
+    for (
+        int i = 0;
+        i < VOTE_CYCLES;
+        i++
+    )
+    {
+        float period =
+            crossing_positions[i + 1]
+            -
+            crossing_positions[i];
+
+
+        if (
+            period <=
+            0.0f
+        )
+        {
+            return false;
+        }
+
+
+        float frequency =
+            (float)SAMPLE_RATE_HZ /
+            period;
+
+
+        if (
+            frequency <
+            MIN_ACCEPTABLE_HZ
+            ||
+            frequency >
+            MAX_ACCEPTABLE_HZ
+        )
+        {
+            return false;
+        }
+    }
+
+
+    return true;
+}
+
+
+// ============================================================
+// Print one window ADC statistics
+// ============================================================
+
+static void print_adc_statistics(
+    float dc_mean,
+    float signal_scale
+)
+{
+    uint16_t min_value = 4095;
+
+    uint16_t max_value = 0;
+
+
+    for (
+        int i = 0;
+        i < ACQUISITION_SAMPLES;
+        i++
+    )
+    {
+        if (
+            adc_samples[i] <
+            min_value
+        )
+        {
+            min_value =
+                adc_samples[i];
+        }
+
+
+        if (
+            adc_samples[i] >
+            max_value
+        )
+        {
+            max_value =
+                adc_samples[i];
+        }
+    }
+
+
+    Serial.printf(
+        "ADC min/max/mean/peak: "
+        "%u / %u / %.2f / %.2f\n",
+        min_value,
+        max_value,
+        dc_mean,
+        signal_scale
+    );
+}
+
+
+// ============================================================
+// Process ONE acquisition window
+//
+// IMPORTANT:
+//
+// ADC lifecycle:
+//
+//     start ADC
+//       |
+//     flush DMA startup data
+//       |
+//     acquire exactly 7040 samples
+//       |
+//     stop ADC
+//       |
+//     deinit ADC
+//       |
+//     process samples
+//
+// This prevents DMA backlog while the CPU performs DSP/MLP.
+// ============================================================
+
+static void process_window()
+{
+    window_counter++;
+
+
+    // --------------------------------------------------------
+    // Start a completely fresh ADC session.
+    // --------------------------------------------------------
+
+    if (
+        !start_adc()
+    )
+    {
+        failed_windows++;
+
+
+        Serial.printf(
+            "\nWINDOW %lu: ADC START FAILED\n",
+            (unsigned long)
+                window_counter
+        );
+
+
+        delay(50);
+
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Remove startup DMA data.
+    // --------------------------------------------------------
+
+    flush_startup_data();
+
+
+    // --------------------------------------------------------
+    // Acquire exactly one coherent analysis window.
+    // --------------------------------------------------------
+
+    uint32_t acquisition_us = 0;
+
+
+    bool acquired =
+        acquire_samples(
+            acquisition_us
+        );
+
+
+    // --------------------------------------------------------
+    // IMPORTANT:
+    //
+    // Stop and destroy the ADC session immediately.
+    //
+    // Do this before DSP/MLP processing so that processing
+    // time cannot create a DMA backlog.
+    // --------------------------------------------------------
+
+    adc_continuous_stop(
+        adc_handle
+    );
+
+
+    adc_continuous_deinit(
+        adc_handle
+    );
+
+
+    adc_handle = NULL;
+
+
+    if (
+        !acquired
+    )
+    {
+        failed_windows++;
+
+
+        Serial.printf(
+            "\nWINDOW %lu: ADC ACQUISITION FAILED\n",
+            (unsigned long)
+                window_counter
+        );
+
+
+        delay(50);
+
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Signal statistics
+    // --------------------------------------------------------
+
+    float dc_mean =
+        calculate_mean();
+
+
+    float signal_scale =
+        calculate_signal_scale(
+            dc_mean
+        );
+
+
+    // --------------------------------------------------------
+    // Robust cycle detection
+    // --------------------------------------------------------
+
+    uint32_t slicer_start =
+        micros();
+
+
+    int crossing_count =
+        detect_crossings(
+            dc_mean,
+            signal_scale
+        );
+
+
+    uint32_t slicer_end =
+        micros();
+
+
+    // --------------------------------------------------------
+    // Need at least 6 rising crossings to extract 5 cycles.
+    // --------------------------------------------------------
+
+    if (
+        crossing_count <
+        (
+            VOTE_CYCLES +
+            1
+        )
+    )
+    {
+        insufficient_cycle_windows++;
+
+
+        Serial.printf(
+            "\nWINDOW %lu: insufficient complete cycles "
+            "(crossings=%d)\n",
+
+            (unsigned long)
+                window_counter,
+
+            crossing_count
+        );
+
+
+        delay(5);
+
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Frequency validation
+    // --------------------------------------------------------
+
+    if (
+        !validate_cycle_frequencies(
+            crossing_count
+        )
+    )
+    {
+        insufficient_cycle_windows++;
+
+
+        Serial.printf(
+            "\nWINDOW %lu: cycle frequency validation FAILED\n",
+            (unsigned long)
+                window_counter
+        );
+
+
+        delay(5);
+
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Five-cycle processing
+    // --------------------------------------------------------
+
+    int arc_votes = 0;
+
+
+    uint32_t total_cycle_processing_us = 0;
+
+
+    float first_frequency = 0.0f;
+
+    float last_frequency = 0.0f;
+
+
+    Serial.println();
+
+
+    Serial.println(
+        "--------------------------------------------------"
+    );
+
+
+    Serial.printf(
+        "WINDOW %lu\n",
+        (unsigned long)
+            window_counter
+    );
+
+
+    Serial.printf(
+        "Acquisition: %.3f ms\n",
+        acquisition_us /
+        1000.0f
+    );
+
+
+    Serial.printf(
+        "Observed acquisition rate: %.2f samples/sec\n",
+        (
+            (
+                (float)
+                ACQUISITION_SAMPLES
+                /
+                (float)
+                acquisition_us
+            )
+            *
+            1000000.0f
+        )
+    );
+
+
+    Serial.printf(
+        "Crossings: %d\n",
+        crossing_count
+    );
+
+
+    Serial.printf(
+        "Slicer time: %lu us\n",
+        (unsigned long)(
+            slicer_end -
+            slicer_start
+        )
+    );
+
+
+    print_adc_statistics(
+        dc_mean,
+        signal_scale
+    );
+
+
+    Serial.println(
+        "PER-CYCLE INFERENCE:"
+    );
+
+
+    for (
+        int cycle = 0;
+        cycle < VOTE_CYCLES;
+        cycle++
+    )
+    {
+        float period =
+            crossing_positions[
+                cycle + 1
+            ]
+            -
+            crossing_positions[
+                cycle
+            ];
+
+
+        float frequency =
+            (float)SAMPLE_RATE_HZ /
+            period;
+
+
+        if (
+            cycle ==
+            0
+        )
+        {
+            first_frequency =
+                frequency;
+        }
+
+
+        last_frequency =
+            frequency;
+
+
+        // ----------------------------------------------------
+        // Resampling timing
+        // ----------------------------------------------------
+
+        uint32_t cycle_start =
+            micros();
+
+
+        uint32_t resample_start =
+            micros();
+
+
+        resample_cycle(
+            crossing_positions[cycle],
+            crossing_positions[cycle + 1],
+            dc_mean
+        );
+
+
+        uint32_t resample_end =
+            micros();
+
+
+        // ----------------------------------------------------
+        // Feature extraction timing
+        // ----------------------------------------------------
+
+        float features[8];
+
+
+        uint32_t dsp_start =
+            micros();
+
+
+        extract_features_8(
+            resampled_cycle,
+            features
+        );
+
+#if ENABLE_CYCLE_DIAGNOSTICS
+        // Diagnostic-only output. Printing over Serial here
+        // substantially increases measured processing time.
+        if (cycle == 0)
+        {
+            Serial.println("  C1 RAW WAVEFORM SAMPLES:");
+
+            for (int i = 0; i < TARGET_CYCLE_LEN; i += 50)
+            {
+                Serial.printf(
+                    "    [%3d] %.3f\n",
+                    i,
+                    resampled_cycle[i]
+                );
+            }
+        }
+
+        Serial.printf(
+            "  FEATURES: crest=%.6f skew=%.6f kurt=%.6f "
+            "d1_ratio=%.6f d2_ratio=%.6f peak_asym=%.6f "
+            "energy_asym=%.6f frac_small=%.6f\n",
+            features[0],
+            features[1],
+            features[2],
+            features[3],
+            features[4],
+            features[5],
+            features[6],
+            features[7]
+        );
+#endif
+
+        uint32_t dsp_end = micros();
+
+
+        // ----------------------------------------------------
+        // MLP inference timing
+        // ----------------------------------------------------
+
+        float probability = 0.0f;
+
+
+        uint32_t mlp_start =
+            micros();
+
+
+        int prediction =
+            predict_arc_8(
+                features,
+                &probability
+            );
+
+
+        uint32_t mlp_end =
+            micros();
+
+
+        uint32_t cycle_end =
+            micros();
+
+
+        uint32_t resample_us =
+            resample_end -
+            resample_start;
+
+
+        uint32_t dsp_us =
+            dsp_end -
+            dsp_start;
+
+
+        uint32_t mlp_us =
+            mlp_end -
+            mlp_start;
+
+
+        uint32_t total_us =
+            cycle_end -
+            cycle_start;
+
+
+        total_cycle_processing_us +=
+            total_us;
+
+
+        cycle_probabilities[
+            cycle
+        ] =
+            probability;
+
+
+        cycle_predictions[
+            cycle
+        ] =
+            prediction;
+
+
+        // ----------------------------------------------------
+        // Frozen temporal vote threshold = 0.60
+        // ----------------------------------------------------
+
+        bool vote_arc =
+            (
+                probability >=
+                PROBABILITY_THRESHOLD
+            );
+
+
+        if (
+            vote_arc
+        )
+        {
+            arc_votes++;
+        }
+
+
+        Serial.printf(
+            "  C%d | "
+            "Freq %.3f Hz | "
+            "Prob %.6f | "
+            "Model %s | "
+            "Vote %s | "
+            "Res %lu us | "
+            "DSP %lu us | "
+            "MLP %lu us | "
+            "Total %lu us\n",
+
+            cycle + 1,
+
+            frequency,
+
+            probability,
+
+            prediction
+                ? "ARC"
+                : "NORMAL",
+
+            vote_arc
+                ? "ARC"
+                : "NORMAL",
+
+            (unsigned long)
+                resample_us,
+
+            (unsigned long)
+                dsp_us,
+
+            (unsigned long)
+                mlp_us,
+
+            (unsigned long)
+                total_us
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // Final 3-of-5 decision
+    // --------------------------------------------------------
+
+    bool final_arc =
+        (
+            arc_votes >=
+            ARC_VOTE_THRESHOLD
+        );
+
+
+    // --------------------------------------------------------
+    // Mean probability
+    // --------------------------------------------------------
+
+    float mean_probability = 0.0f;
+
+
+    for (
+        int i = 0;
+        i < VOTE_CYCLES;
+        i++
+    )
+    {
+        mean_probability +=
+            cycle_probabilities[i];
+    }
+
+
+    mean_probability /=
+        (float)VOTE_CYCLES;
+
+
+    // --------------------------------------------------------
+    // Counters
+    // --------------------------------------------------------
+
+    successful_windows++;
+
+
+    if (
+        final_arc
+    )
+    {
+        final_arc_windows++;
+    }
+    else
+    {
+        final_normal_windows++;
+    }
+
+
+    // --------------------------------------------------------
+    // Final decision
+    // --------------------------------------------------------
+
+    Serial.println();
+
+
+    Serial.println(
+        "TEMPORAL VOTING"
+    );
+
+
+    Serial.println(
+        "----------------------------------------"
+    );
+
+
+    for (
+        int i = 0;
+        i < VOTE_CYCLES;
+        i++
+    )
+    {
+        Serial.printf(
+            "Cycle %d probability: %.6f\n",
+            i + 1,
+            cycle_probabilities[i]
+        );
+    }
+
+
+    Serial.printf(
+        "ARC votes: %d / %d\n",
+        arc_votes,
+        VOTE_CYCLES
+    );
+
+
+    Serial.printf(
+        "Required ARC votes: %d\n",
+        ARC_VOTE_THRESHOLD
+    );
+
+
+    Serial.printf(
+        "Voting threshold: %.2f\n",
+        PROBABILITY_THRESHOLD
+    );
+
+
+    Serial.printf(
+        "Mean probability: %.6f\n",
+        mean_probability
+    );
+
+
+    Serial.printf(
+        "First cycle frequency: %.3f Hz\n",
+        first_frequency
+    );
+
+
+    Serial.printf(
+        "Last cycle frequency: %.3f Hz\n",
+        last_frequency
+    );
+
+
+    Serial.printf(
+        "FINAL DECISION: %s\n",
+        final_arc
+            ? "ARC"
+            : "NORMAL"
+    );
+
+
+    // --------------------------------------------------------
+    // Timing summary
+    // --------------------------------------------------------
+
+    Serial.println();
+
+
+    Serial.println(
+        "TIMING"
+    );
+
+
+    Serial.println(
+        "----------------------------------------"
+    );
+
+
+    Serial.printf(
+        "Acquisition: %.3f ms\n",
+        acquisition_us /
+        1000.0f
+    );
+
+
+    Serial.printf(
+        "Slicer: %lu us\n",
+        (unsigned long)(
+            slicer_end -
+            slicer_start
+        )
+    );
+
+
+    Serial.printf(
+        "5-cycle processing: %lu us\n",
+        (unsigned long)
+            total_cycle_processing_us
+    );
+
+
+    Serial.printf(
+        "Average cycle processing: %.1f us\n",
+        (
+            (float)
+            total_cycle_processing_us
+            /
+            (float)VOTE_CYCLES
+        )
+    );
+
+
+    Serial.printf(
+        "Nominal 5-cycle signal span: %.3f ms\n",
+        (
+            1000.0f *
+            (float)VOTE_CYCLES /
+            DAC_WAVEFORM_HZ
+        )
+    );
+
+
+    // --------------------------------------------------------
+    // Running counters
+    // --------------------------------------------------------
+
+    Serial.println();
+
+
+    Serial.println(
+        "RUNNING COUNTERS"
+    );
+
+
+    Serial.println(
+        "----------------------------------------"
+    );
+
+
+    Serial.printf(
+        "Windows processed: %lu\n",
+        (unsigned long)
+            window_counter
+    );
+
+
+    Serial.printf(
+        "Successful windows: %lu\n",
+        (unsigned long)
+            successful_windows
+    );
+
+
+    Serial.printf(
+        "NORMAL decisions: %lu\n",
+        (unsigned long)
+            final_normal_windows
+    );
+
+
+    Serial.printf(
+        "ARC decisions: %lu\n",
+        (unsigned long)
+            final_arc_windows
+    );
+
+
+    Serial.printf(
+        "Insufficient-cycle windows: %lu\n",
+        (unsigned long)
+            insufficient_cycle_windows
+    );
+
+
+    Serial.printf(
+        "Failed windows: %lu\n",
+        (unsigned long)
+            failed_windows
+    );
+
+
+    Serial.println();
+
+
+    Serial.println(
+        "STATUS: WINDOW COMPLETE"
+    );
+
+
+    Serial.println(
+        "--------------------------------------------------"
+    );
+}
+
+
+// ============================================================
+// SETUP
+// ============================================================
+
+void setup()
+{
+    Serial.begin(
+        115200
+    );
+
+
+    delay(1000);
+
+
+    Serial.println();
+
+
+    Serial.println(
+        "=================================================="
+    );
+
+
+    Serial.println(
+        "ESP32 REAL-TIME ARC-FAULT DETECTOR"
+    );
+
+
+    Serial.println(
+        "=================================================="
+    );
+
+
+    Serial.printf(
+        "Board              : DOIT ESP32 DEVKIT V1\n"
+    );
+
+
+    Serial.printf(
+        "CPU frequency      : %d MHz\n",
+        getCpuFrequencyMhz()
+    );
+
+
+    Serial.printf(
+        "Arduino core       : %s\n",
+        ESP_ARDUINO_VERSION_STR
+    );
+
+
+    Serial.printf(
+        "ESP-IDF            : %s\n",
+        esp_get_idf_version()
+    );
+
+
+    Serial.println();
+
+
+    Serial.printf(
+        "DAC output         : GPIO%d\n",
+        DAC_PIN
+    );
+
+
+    Serial.printf(
+        "DAC waveform       : %.1f Hz\n",
+        DAC_WAVEFORM_HZ
+    );
+
+
+    Serial.printf(
+        "DAC update rate    : %d Hz\n",
+        DAC_UPDATE_HZ
+    );
+
+
+    Serial.printf(
+        "ADC input          : GPIO%d / ADC1_CH6\n",
+        ADC_PIN
+    );
+
+
+    Serial.printf(
+        "ADC sample rate    : %d Hz\n",
+        SAMPLE_RATE_HZ
+    );
+
+
+    Serial.printf(
+        "Window size        : %d samples\n",
+        ACQUISITION_SAMPLES
+    );
+
+
+    Serial.printf(
+        "Window duration    : %.3f ms\n",
+        (
+            1000.0f *
+            (float)ACQUISITION_SAMPLES /
+            (float)SAMPLE_RATE_HZ
+        )
+    );
+
+
+    Serial.printf(
+        "Cycle representation: %d samples\n",
+        TARGET_CYCLE_LEN
+    );
+
+
+    Serial.printf(
+        "Temporal vote      : %d-of-%d\n",
+        ARC_VOTE_THRESHOLD,
+        VOTE_CYCLES
+    );
+
+
+    Serial.printf(
+        "Voting threshold   : %.2f\n",
+        PROBABILITY_THRESHOLD
+    );
+
+    Serial.printf(
+        "Cycle diagnostics  : %s\n",
+#if ENABLE_CYCLE_DIAGNOSTICS
+        "ON (timing affected)"
+#else
+        "OFF"
+#endif
+    );
+
+
+    Serial.println();
+
+
+    Serial.println(
+        "Expected safe HIL wiring:"
+    );
+
+
+    Serial.println(
+        "GPIO25 (DAC) -> GPIO34 (ADC)"
+    );
+
+
+    Serial.println();
+
+
+    Serial.println(
+        "NO MAINS."
+    );
+
+
+    Serial.println(
+        "SAFE INTERNAL DAC HIL ONLY."
+    );
+
+
+    // --------------------------------------------------------
+    // Start DAC once.
+    //
+    // It remains running continuously.
+    // --------------------------------------------------------
+
+    if (
+        !start_waveform()
+    )
+    {
+        Serial.println(
+            "STATUS: DAC START FAILED"
+        );
+
+
+        while (true)
+        {
+            delay(1000);
+        }
+    }
+
+
+    delay(200);
+
+
+    Serial.println();
+
+
+    Serial.println(
+        "DAC waveform generator started."
+    );
+
+
+    Serial.println(
+        "ADC will be started fresh for each window."
+    );
+
+
+    Serial.println();
+
+
+    Serial.println(
+        "REAL-TIME DETECTOR READY."
+    );
+
+
+    Serial.println(
+        "=================================================="
+    );
+}
+
+
+// ============================================================
+// LOOP
+//
+// Every iteration:
+//
+//   1. Start fresh ADC DMA
+//   2. Flush startup DMA
+//   3. Acquire 7040 samples
+//   4. Stop/deinit ADC
+//   5. Detect cycles
+//   6. Process 5 cycles
+//   7. Apply 3-of-5 vote
+//   8. Repeat
+// ============================================================
+
+void loop()
+{
+    process_window();
+}
